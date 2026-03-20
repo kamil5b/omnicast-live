@@ -1,0 +1,11 @@
+{
+  "name": "Trivia Quiz",
+  "description": "Scoreboard & fastest finger highlight. Buzzer lockout, points, and individual disable.",
+  "modules": {
+    "buzzer": true,
+    "points": true,
+    "roles": false,
+    "voting": false,
+    "status": false
+  }
+}

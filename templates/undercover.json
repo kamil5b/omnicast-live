@@ -1,0 +1,11 @@
+{
+  "name": "Undercover",
+  "description": "Suspect tracking and point tallies. Secret roles, voting, points, and status.",
+  "modules": {
+    "buzzer": false,
+    "points": true,
+    "roles": true,
+    "voting": true,
+    "status": true
+  }
+}
