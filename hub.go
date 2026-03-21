@@ -25,16 +25,19 @@ var upgrader = websocket.Upgrader{
 
 // ── Client ────────────────────────────────────────────────────────────────────
 
-// Client represents one WebSocket connection.
+// Client represents one live WebSocket connection.
+// role is one of "player", "gm", "operator", "overlay".
+// playerID is only set for role == "player".
 type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn
-	send     chan []byte
-	role     string // "player" | "gm" | "operator" | "overlay"
-	playerID string // set when role == "player"
+	send     chan []byte // outbound message queue
+	role     string
+	playerID string
 }
 
-// writePump pumps messages from the send channel to the WebSocket connection.
+// writePump drains the send queue onto the WebSocket, coalescing pending frames
+// and sending periodic pings to keep the connection alive.
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -55,15 +58,15 @@ func (c *Client) writePump() {
 				return
 			}
 			w.Write(msg)
-			// Drain any pending messages
-			n := len(c.send)
-			for i := 0; i < n; i++ {
+			// Coalesce any messages that arrived while writing.
+			for n := len(c.send); n > 0; n-- {
 				w.Write([]byte{'\n'})
 				w.Write(<-c.send)
 			}
 			if err := w.Close(); err != nil {
 				return
 			}
+
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
@@ -73,7 +76,7 @@ func (c *Client) writePump() {
 	}
 }
 
-// readPump pumps messages from the WebSocket to the game dispatcher.
+// readPump reads inbound messages and forwards them to the game dispatcher.
 func (c *Client) readPump(game *GameState) {
 	defer func() {
 		game.onDisconnect(c.hub, c)
@@ -91,7 +94,7 @@ func (c *Client) readPump(game *GameState) {
 		_, raw, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("ws error: %v", err)
+				log.Printf("ws read error: %v", err)
 			}
 			break
 		}
@@ -101,7 +104,7 @@ func (c *Client) readPump(game *GameState) {
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
 
-// Hub holds all active WebSocket clients.
+// Hub maintains the set of all live WebSocket clients.
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[*Client]bool
@@ -126,8 +129,10 @@ func (h *Hub) unregister(c *Client) {
 	h.mu.Unlock()
 }
 
-// send queues a JSON-marshalled message to a specific client.
-func (h *Hub) send(c *Client, v interface{}) {
+// deliver JSON-encodes v and enqueues it for the given client.
+// If the client's send buffer is full the message is silently dropped —
+// the client will receive a consistent snapshot on reconnect.
+func (h *Hub) deliver(c *Client, v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return
@@ -135,11 +140,10 @@ func (h *Hub) send(c *Client, v interface{}) {
 	select {
 	case c.send <- data:
 	default:
-		// Buffer full — drop; client will reconnect.
 	}
 }
 
-// broadcastRole sends to all clients with the given role.
+// broadcastRole delivers v to all clients with the given role.
 func (h *Hub) broadcastRole(role string, v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -157,7 +161,7 @@ func (h *Hub) broadcastRole(role string, v interface{}) {
 	}
 }
 
-// broadcastAll sends to every connected client.
+// broadcastAll delivers v to every connected client.
 func (h *Hub) broadcastAll(v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -173,7 +177,7 @@ func (h *Hub) broadcastAll(v interface{}) {
 	}
 }
 
-// findPlayer returns the Client for a connected player, or nil.
+// findPlayer returns the Client whose playerID matches, or nil.
 func (h *Hub) findPlayer(playerID string) *Client {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -185,7 +189,7 @@ func (h *Hub) findPlayer(playerID string) *Client {
 	return nil
 }
 
-// forEachRole iterates over all clients with the given role (under read lock).
+// forEachRole calls fn for every client with the given role (under read lock).
 func (h *Hub) forEachRole(role string, fn func(*Client)) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -196,7 +200,10 @@ func (h *Hub) forEachRole(role string, fn func(*Client)) {
 	}
 }
 
-// serveWS upgrades an HTTP request to a WebSocket and starts the pumps.
+// ── Upgrade ───────────────────────────────────────────────────────────────────
+
+// serveWS upgrades an HTTP request to a WebSocket connection and starts its
+// read/write goroutines.
 func serveWS(hub *Hub, game *GameState, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
