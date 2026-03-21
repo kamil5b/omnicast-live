@@ -152,7 +152,9 @@
       templates.forEach((t) => {
         const b = document.createElement('button');
         b.className = 'btn template-btn';
-        b.dataset.tmpl = t.name.toLowerCase().replace(/\s+/g, '_');
+        // Use t.id (filename-based) so the server can locate the .json file.
+        // Fall back to a slugified t.name for backwards-compat.
+        b.dataset.tmpl = t.id || t.name.toLowerCase().replace(/\s+/g, '_');
         b.title = t.description || '';
         b.textContent = t.name;
         b.addEventListener('click', () => {
