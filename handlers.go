@@ -21,29 +21,54 @@ import (
 func newUUID() string { return uuid.New().String() }
 
 func getLocalIP() string {
+	// Prefer these interface names (in order)
+	prefixes := []string{"eth", "en", "wlan"}
+
 	ifaces, _ := net.Interfaces()
+
+	// First pass: try to find preferred interfaces
+	for _, prefix := range prefixes {
+		for _, iface := range ifaces {
+			if strings.HasPrefix(iface.Name, prefix) && iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagLoopback == 0 {
+				if ip := extractIPv4(iface); ip != "" {
+					return ip
+				}
+			}
+		}
+	}
+
+	// Fallback: return any non-loopback IPv4
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-		addrs, _ := iface.Addrs()
-		for _, addr := range addrs {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip == nil || ip.IsLoopback() {
-				continue
-			}
-			if ip4 := ip.To4(); ip4 != nil {
-				return ip4.String()
-			}
+		if ip := extractIPv4(iface); ip != "" {
+			return ip
 		}
 	}
+
 	return "localhost"
+}
+
+// extractIPv4 returns the first IPv4 address from an interface
+func extractIPv4(iface net.Interface) string {
+	addrs, _ := iface.Addrs()
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if ip == nil || ip.IsLoopback() {
+			continue
+		}
+		if ip4 := ip.To4(); ip4 != nil {
+			return ip4.String()
+		}
+	}
+	return ""
 }
 
 // copyDefaultTemplates seeds the on-disk templates directory from the embedded
