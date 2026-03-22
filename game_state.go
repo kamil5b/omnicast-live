@@ -89,6 +89,21 @@ func (g *GameState) gmState() map[string]interface{} {
 		votes[k] = v
 	}
 	base["votes"] = votes
+	// explicit roles map (playerID → roleText) for GM checklist rendering
+	rolesMap := make(map[string]string, len(g.roles))
+	for k, v := range g.roles {
+		rolesMap[k] = v
+	}
+	base["roles"] = rolesMap
+	// role definitions and per-player reveal state (GM only)
+	defs := make([]RoleDefinition, len(g.roleDefinitions))
+	copy(defs, g.roleDefinitions)
+	base["roleDefinitions"] = defs
+	revealedRoles := make(map[string]bool, len(g.revealedRoles))
+	for k, v := range g.revealedRoles {
+		revealedRoles[k] = v
+	}
+	base["revealedRoles"] = revealedRoles
 	return base
 }
 
@@ -103,6 +118,26 @@ func (g *GameState) privateState(p *player) map[string]interface{} {
 	if g.revealedVotes != nil {
 		rv = g.revealedVotes
 	}
+
+	// Build the list of other players for voting (exclude self).
+	votingPlayers := make([]map[string]interface{}, 0)
+	if g.votingOpen {
+		for _, other := range g.players {
+			if other.ID == p.ID {
+				continue
+			}
+			votingPlayers = append(votingPlayers, map[string]interface{}{
+				"id":    other.ID,
+				"name":  other.Name,
+				"image": other.Image,
+			})
+		}
+	}
+
+	// A role is considered "revealed" to this player if GM revealed it individually
+	// OR showAllRoles is globally on.
+	roleRevealed := g.revealedRoles[p.ID] || g.showAllRoles
+
 	return map[string]interface{}{
 		"type":          "playerState",
 		"id":            p.ID,
@@ -112,7 +147,9 @@ func (g *GameState) privateState(p *player) map[string]interface{} {
 		"status":        p.Status,
 		"buzzerEnabled": p.BuzzerEnabled,
 		"role":          g.roles[p.ID],
+		"roleRevealed":  roleRevealed,
 		"votingOpen":    g.votingOpen,
+		"votingPlayers": votingPlayers,
 		"buzzerLocked":  g.buzzerLocked,
 		"buzzerWinner":  winner,
 		"activeModules": g.activeModules,

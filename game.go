@@ -35,6 +35,13 @@ type VoteResult struct {
 	Votes      int    `json:"votes"`
 }
 
+// RoleDefinition is one entry in the GM-defined role list.
+type RoleDefinition struct {
+	Name  string `json:"name"`
+	Max   int    `json:"max"` // max players that can hold this role (0 = unlimited)
+	Color string `json:"color,omitempty"`
+}
+
 // GameState is the single authoritative game state.
 // All mutations must hold g.mu. Callers of broadcastPublicState must NOT
 // hold g.mu — the method acquires it internally.
@@ -42,24 +49,28 @@ type VoteResult struct {
 type GameState struct {
 	mu sync.Mutex
 
-	players       map[string]*player
-	roles         map[string]string // playerID → roleText; never broadcast to other players
-	buzzerLocked  bool
-	buzzerWinner  string
-	votingOpen    bool
-	votes         map[string]string // voterID → targetID
-	votesRevealed bool
-	revealedVotes []VoteResult
-	showAllRoles  bool
-	activeModules Modules
-	template      string
+	players         map[string]*player
+	roles           map[string]string // playerID → roleText; never broadcast to other players
+	revealedRoles   map[string]bool   // playerID → true when GM has revealed that player's role to them explicitly
+	roleDefinitions []RoleDefinition  // ordered list of roles defined by GM
+	buzzerLocked    bool
+	buzzerWinner    string
+	votingOpen      bool
+	votes           map[string]string // voterID → targetID
+	votesRevealed   bool
+	revealedVotes   []VoteResult
+	showAllRoles    bool
+	activeModules   Modules
+	template        string
 }
 
 func newGameState() *GameState {
 	return &GameState{
-		players: make(map[string]*player),
-		roles:   make(map[string]string),
-		votes:   make(map[string]string),
+		players:         make(map[string]*player),
+		roles:           make(map[string]string),
+		revealedRoles:   make(map[string]bool),
+		roleDefinitions: []RoleDefinition{},
+		votes:           make(map[string]string),
 		activeModules: Modules{
 			Buzzer: true,
 			Points: true,

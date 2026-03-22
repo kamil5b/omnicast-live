@@ -79,6 +79,48 @@
     .vote-bar-fill { height:100%; background:var(--accent); border-radius:4px; }
 
     .conn-bar { display:flex; align-items:center; font-size:.8rem; color:var(--text-muted); margin-bottom:1rem; }
+
+    /* GM Message overlay */
+    .gm-message-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      pointer-events: none;
+      padding: 1rem;
+    }
+    .gm-message-bubble {
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.6rem;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 0 32px rgba(233,69,96,.35);
+      text-align: center;
+      animation: gmMsgIn .3s ease;
+      pointer-events: auto;
+    }
+    .gm-message-label {
+      font-size: .7rem;
+      color: var(--accent);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+    .gm-message-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    @keyframes gmMsgIn {
+      from { opacity:0; transform:scale(.92) translateY(10px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -129,6 +171,14 @@
     <div class="card">
       <h3 style="margin-bottom:.8rem">📊 Vote Results</h3>
       <div id="vote-reveal-list"></div>
+    </div>
+  </div>
+
+  <!-- GM direct message overlay -->
+  <div class="gm-message-overlay" id="gm-message-overlay" style="display:none">
+    <div class="gm-message-bubble" id="gm-message-bubble">
+      <div class="gm-message-label">📢 Message from GM</div>
+      <div class="gm-message-text" id="gm-message-text"></div>
     </div>
   </div>
 

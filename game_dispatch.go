@@ -34,6 +34,18 @@ func (g *GameState) dispatch(h *Hub, c *Client, raw []byte) {
 		g.handleSetStatus(h, c, m)
 	case "gm:assignRole":
 		g.handleAssignRole(h, c, m)
+	case "gm:assignRoleChecklist":
+		g.handleAssignRoleChecklist(h, c, m)
+	case "gm:revealRoleForPlayer":
+		g.handleRevealRoleForPlayer(h, c, m)
+	case "gm:setRoleDefinitions":
+		g.handleSetRoleDefinitions(h, c, m)
+	case "gm:randomizeRoles":
+		g.handleRandomizeRoles(h, c, m)
+	case "gm:resetRoles":
+		g.handleResetRoles(h, c)
+	case "gm:messagePlayer":
+		g.handleGMMessage(h, c, m)
 	case "gm:enableBuzzers":
 		g.handleResetBuzzer(h, c, "buzzer:enabled")
 	case "gm:resetBuzzer":

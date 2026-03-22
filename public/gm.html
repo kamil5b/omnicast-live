@@ -16,7 +16,7 @@
     .join-url { font-size:.8rem; word-break:break-all; text-align:center; color:var(--text-muted); }
 
     /* Player cards */
-    .players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.8rem; margin-bottom:1rem; }
+    .players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.8rem; margin-bottom:1rem; }
     .player-card {
       background: var(--surface);
       border-radius: var(--radius);
@@ -33,6 +33,7 @@
     .player-card-role { font-size:.8rem; color:#aaa; margin-bottom:.4rem; word-break:break-word; }
     .player-actions { display:flex; flex-wrap:wrap; gap:.3rem; }
     .player-actions button { font-size:.75rem; padding:.25rem .5rem; }
+    .player-link-row { display:flex; align-items:center; gap:.3rem; margin-bottom:.4rem; font-size:.75rem; }
 
     /* Templates */
     .template-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
@@ -47,23 +48,64 @@
     /* Global actions */
     .global-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.8rem; }
 
-    /* Role assignment */
-    .role-assign { display:flex; gap:.4rem; align-items:center; margin-bottom:.4rem; }
-    .role-assign select { flex:1; }
-    .role-assign input { flex:2; }
-    .role-assign button { flex-shrink:0; }
+    /* Role definitions */
+    .role-def-list { display:flex; flex-direction:column; gap:.4rem; margin-bottom:.6rem; }
+    .role-def-row { display:flex; align-items:center; gap:.4rem; background:var(--surface2); border-radius:8px; padding:.4rem .6rem; }
+    .role-def-name { flex:1; font-weight:600; font-size:.85rem; }
+    .role-def-max { font-size:.75rem; color:var(--text-muted); white-space:nowrap; }
+    .role-def-count { font-size:.75rem; color:var(--accent); white-space:nowrap; min-width:60px; }
+    .role-def-add { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+    .role-def-add input { flex:2; }
+    .role-def-add input[type="number"] { flex:0 0 64px; }
+    .role-def-actions { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.6rem; }
+
+    /* Role checklist assignment */
+    .role-checklist-wrap { display:flex; gap:1rem; flex-wrap:wrap; }
+    .role-checklist-player { flex:1; min-width:180px; }
+    .role-checklist-player-name { font-weight:700; font-size:.85rem; margin-bottom:.3rem; }
+    .role-checklist-roles { display:flex; flex-direction:column; gap:.2rem; }
+    .role-check-item { display:flex; align-items:center; gap:.5rem; background:var(--surface2); border-radius:6px; padding:.3rem .5rem; cursor:pointer; font-size:.8rem; }
+    .role-check-item input { accent-color:var(--accent); }
+    .role-check-item.at-max { opacity:.5; cursor:not-allowed; }
+    .role-check-item.at-max input { cursor:not-allowed; }
 
     /* Voting panel */
     .vote-tally { font-size:.85rem; padding:.4rem; background:var(--surface2); border-radius:8px; max-height:150px; overflow-y:auto; }
     .vote-row { display:flex; justify-content:space-between; margin-bottom:.2rem; }
 
-    /* Add player form */
-    .add-player-form { display:flex; gap:.4rem; align-items:flex-end; flex-wrap:wrap; }
+    /* GM Message Modal */
+    .modal-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.7);
+      display:flex; align-items:center; justify-content:center;
+      z-index:1000; display:none;
+    }
+    .modal-backdrop.open { display:flex; }
+    .modal {
+      background:var(--surface); border-radius:var(--radius);
+      padding:1.2rem; width:min(90vw,400px);
+      box-shadow:var(--shadow);
+    }
+    .modal h3 { margin-bottom:.8rem; font-size:1rem; }
+    .modal textarea { width:100%; min-height:80px; margin-bottom:.6rem; resize:vertical; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:.5rem; }
+
+    .conn-bar { display:flex; align-items:center; font-size:.8rem; color:var(--text-muted); margin-bottom:1rem; }
 
     @media (max-width:500px) {
       .players-grid { grid-template-columns:1fr 1fr; }
     }
-    .conn-bar { display:flex; align-items:center; font-size:.8rem; color:var(--text-muted); margin-bottom:1rem; }
+
+    .role-assign-tabs { display:flex; gap:.4rem; margin-bottom:.6rem; }
+    .role-assign-tab { background:var(--surface2); font-size:.8rem; padding:.3rem .7rem; border-radius:6px; cursor:pointer; border:2px solid transparent; }
+    .role-assign-tab.active { border-color:var(--accent); }
+    .role-assign-panel { display:none; }
+    .role-assign-panel.active { display:block; }
+
+    /* legacy single-assign */
+    .role-assign { display:flex; gap:.4rem; align-items:center; margin-bottom:.4rem; flex-wrap:wrap; }
+    .role-assign select { flex:1; min-width:120px; }
+    .role-assign input { flex:2; min-width:120px; }
+    .role-assign button { flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -74,7 +116,7 @@
 
   <div class="page-header">
     <h1>🎮 Game Master</h1>
-    <div style="display:flex;gap:.5rem">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <button class="btn btn-sm" id="qr-btn">📱 QR Code</button>
       <button class="btn btn-sm btn-red" id="reset-scores-btn">↺ Reset Scores</button>
     </div>
@@ -122,11 +164,47 @@
 
   <!-- Role Assignment -->
   <div class="card" id="role-assign-card">
-    <div class="section-title">Assign Roles</div>
-    <div class="role-assign">
-      <select id="role-player-select"><option value="">— Select Player —</option></select>
-      <input type="text" id="role-text-input" placeholder="Role name…" maxlength="48"/>
-      <button class="btn btn-accent btn-sm" id="assign-role-btn">Assign</button>
+    <div class="section-title">Roles</div>
+
+    <!-- Role Definitions -->
+    <div style="margin-bottom:.8rem">
+      <div style="font-size:.8rem;font-weight:600;color:var(--text-muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.05em">Role Definitions</div>
+      <div class="role-def-list" id="role-def-list">
+        <span style="font-size:.8rem;color:var(--text-muted)" id="role-def-empty">No roles defined yet.</span>
+      </div>
+      <div class="role-def-add">
+        <input type="text" id="role-def-name" placeholder="Role name…" maxlength="48" style="flex:2"/>
+        <input type="number" id="role-def-max" placeholder="Max" min="0" max="99" style="flex:0 0 70px" title="Max players (0 = unlimited)"/>
+        <button class="btn btn-sm btn-accent" id="role-def-add-btn">+ Add</button>
+      </div>
+      <div class="role-def-actions">
+        <button class="btn btn-sm btn-green" id="randomize-roles-btn">🎲 Randomize Unassigned</button>
+        <button class="btn btn-sm btn-orange" id="randomize-reset-btn">🎲 Randomize All (Reset)</button>
+        <button class="btn btn-sm btn-red" id="reset-roles-btn">✕ Reset All Roles</button>
+      </div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="role-assign-tabs">
+      <button class="role-assign-tab active" data-tab="checklist">Checklist</button>
+      <button class="role-assign-tab" data-tab="manual">Manual</button>
+    </div>
+
+    <!-- Checklist panel -->
+    <div class="role-assign-panel active" id="tab-checklist">
+      <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem">Select a role for each player (1 player = 1 role). Greyed roles are at max capacity.</div>
+      <div class="role-checklist-wrap" id="role-checklist-wrap">
+        <span style="font-size:.8rem;color:var(--text-muted)">No players yet.</span>
+      </div>
+    </div>
+
+    <!-- Manual panel (legacy single assign) -->
+    <div class="role-assign-panel" id="tab-manual">
+      <div class="role-assign">
+        <select id="role-player-select"><option value="">— Select Player —</option></select>
+        <input type="text" id="role-text-input" placeholder="Role name…" maxlength="48"/>
+        <button class="btn btn-accent btn-sm" id="assign-role-btn">Assign</button>
+      </div>
     </div>
   </div>
 
@@ -141,6 +219,18 @@
     <div class="section-title">Players (<span id="player-count">0</span>)</div>
     <div class="players-grid" id="players-grid"></div>
     <p id="no-players" style="color:var(--text-muted);font-size:.85rem">No players yet. Share the QR code!</p>
+  </div>
+
+  <!-- GM Message Modal -->
+  <div class="modal-backdrop" id="msg-modal">
+    <div class="modal">
+      <h3>💬 Message <span id="msg-modal-player-name"></span></h3>
+      <textarea id="msg-modal-text" placeholder="Type your message…" maxlength="300"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-sm" id="msg-modal-cancel">Cancel</button>
+        <button class="btn btn-sm btn-accent" id="msg-modal-send">Send</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast-container" id="toast-container"></div>
