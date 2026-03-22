@@ -7,19 +7,28 @@
   <title>OmniCast — Join Game</title>
   <link rel="stylesheet" href="/css/common.css"/>
   <style>
-    body { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.5rem; min-height:100vh; }
-    .logo { font-size:2rem; font-weight:900; letter-spacing:.1em; margin-bottom:.3rem; }
-    .logo span { color:var(--accent); }
-    .subtitle { color:var(--text-muted); font-size:.9rem; margin-bottom:2rem; }
-    .join-card { background:var(--surface); border-radius:var(--radius); padding:1.5rem; width:100%; max-width:380px; box-shadow:var(--shadow); }
-    .avatar-preview { width:90px; height:90px; border-radius:50%; object-fit:cover; border:3px solid var(--accent); margin:0 auto 1rem; display:block; background:var(--surface2); }
-    .upload-btn { text-align:center; margin-bottom:1rem; }
-    .upload-btn label { cursor:pointer; color:var(--accent); font-size:.85rem; }
-    #file-input { display:none; }
-    .form-group { margin-bottom:1rem; }
-    .join-btn { width:100%; padding:.8rem; font-size:1rem; background:var(--accent); margin-top:.5rem; }
-    .status-msg { text-align:center; color:var(--text-muted); font-size:.85rem; margin-top:.8rem; min-height:1.2em; }
-    .reconnect-info { background:var(--surface2); border-radius:var(--radius); padding:.6rem; margin-top:.8rem; font-size:.8rem; color:var(--text-muted); text-align:center; display:none; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; min-height: 100vh; }
+
+    .logo { font-size: 2rem; font-weight: 900; letter-spacing: .1em; margin-bottom: .3rem; }
+    .logo span { color: var(--accent); }
+    .subtitle { color: var(--text-muted); font-size: .9rem; margin-bottom: 2rem; }
+
+    .join-card { background: var(--surface); border-radius: var(--radius); padding: 1.5rem; width: 100%; max-width: 380px; box-shadow: var(--shadow); }
+    .join-card h2 { text-align: center; margin-bottom: 1.2rem; font-size: 1.2rem; }
+
+    .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); margin: 0 auto 1rem; display: block; background: var(--surface2); }
+    .upload-btn { text-align: center; margin-bottom: 1rem; }
+    .upload-btn label { cursor: pointer; color: var(--accent); font-size: .85rem; }
+    #file-input { display: none; }
+
+    .form-group { margin-bottom: 1rem; }
+    .join-btn { width: 100%; padding: .8rem; font-size: 1rem; background: var(--accent); margin-top: .5rem; }
+
+    .status-msg { text-align: center; color: var(--text-muted); font-size: .85rem; margin-top: .8rem; min-height: 1.2em; }
+    .reconnect-info { background: var(--surface2); border-radius: var(--radius); padding: .6rem; margin-top: .8rem; font-size: .8rem; color: var(--text-muted); text-align: center; display: none; }
+
+    .joined-view { display: none; text-align: center; width: 100%; max-width: 380px; }
+    .joined-view p { color: var(--success); font-size: 1.1rem; margin-bottom: .5rem; }
   </style>
 </head>
 <body>
@@ -27,7 +36,7 @@
   <p class="subtitle">Live Game Engine</p>
 
   <div class="join-card" id="join-form">
-    <h2 style="text-align:center;margin-bottom:1.2rem;font-size:1.2rem;">Join the Game</h2>
+    <h2>Join the Game</h2>
     <img id="avatar-preview" class="avatar-preview" src="/img/default-avatar.svg" alt="Avatar"/>
     <div class="upload-btn">
       <label for="file-input">📷 Tap to add your photo</label>
@@ -44,8 +53,8 @@
     </div>
   </div>
 
-  <div id="joined-view" style="display:none;text-align:center;width:100%;max-width:380px;">
-    <p style="color:var(--success);font-size:1.1rem;margin-bottom:.5rem;">✅ Joined! Redirecting…</p>
+  <div class="joined-view" id="joined-view">
+    <p>✅ Joined! Redirecting…</p>
   </div>
 
   <div class="toast-container" id="toast-container"></div>

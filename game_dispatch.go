@@ -61,15 +61,11 @@ func (g *GameState) dispatch(h *Hub, c *Client, raw []byte) {
 	case "gm:hideVotes":
 		g.handleHideVotes(h, c)
 	case "gm:showAllRoles":
-		if c.role == "gm" {
-			g.setShowAllRoles(h, m.boolVal("show"))
-		}
+		g.handleGMShowAllRoles(h, c, m)
 	case "gm:removePlayer":
 		g.handleRemovePlayer(h, c, m)
 	case "gm:resetScores":
-		if c.role == "gm" {
-			g.resetAllScores(h)
-		}
+		g.handleGMResetScores(h, c)
 	case "gm:loadTemplate":
 		g.handleLoadTemplate(h, c, m)
 	case "gm:setModules":
@@ -81,12 +77,8 @@ func (g *GameState) dispatch(h *Hub, c *Client, raw []byte) {
 	case "operator:overrideImageUpload":
 		g.handleOverrideImageUpload(h, c, m)
 	case "operator:showAllRoles":
-		if c.role == "operator" {
-			g.setShowAllRoles(h, m.boolVal("show"))
-		}
+		g.handleOperatorShowAllRoles(h, c, m)
 	case "operator:resetScores":
-		if c.role == "operator" {
-			g.resetAllScores(h)
-		}
+		g.handleOperatorResetScores(h, c)
 	}
 }

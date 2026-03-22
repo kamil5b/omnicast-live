@@ -211,7 +211,7 @@
     }
 
     function buildPlayerUrl(playerId) {
-        return `${location.protocol}//${location.host}/player#${playerId}`;
+        return `${location.protocol}//${location.host}/player.html#${playerId}`;
     }
 
     // ── Vote tally ────────────────────────────────────────────────────────────
@@ -304,7 +304,38 @@
     }
 
     // ── Checklist assignment ──────────────────────────────────────────────────
+
+    // Single delegated change-listener for the checklist — registered once so
+    // re-renders don't stack listeners. Reads assignedRoles from the closure
+    // variable that renderRoleChecklist keeps up-to-date via lastAssignedRoles.
+    let lastAssignedRoles = {};
+    roleChecklistWrap.addEventListener("change", (e) => {
+        const input = e.target.closest('input[type="radio"]');
+        if (!input) return;
+        const pid = input.dataset.playerId;
+        const role = input.dataset.role;
+        if (role === "") {
+            // Unassign: emit checklist with assign=false for the player's current role
+            const currentRole = lastAssignedRoles[pid] || "";
+            if (currentRole) {
+                socket.emit("gm:assignRoleChecklist", {
+                    playerId: pid,
+                    role: currentRole,
+                    assign: false,
+                });
+            }
+        } else {
+            socket.emit("gm:assignRoleChecklist", {
+                playerId: pid,
+                role,
+                assign: true,
+            });
+        }
+    });
+
     function renderRoleChecklist(players, defs, assignedRoles) {
+        lastAssignedRoles = assignedRoles;
+
         if (!Object.keys(players).length || !defs.length) {
             roleChecklistWrap.innerHTML =
                 '<span style="font-size:.8rem;color:var(--text-muted)">' +
@@ -377,31 +408,6 @@
 
             roleChecklistWrap.appendChild(col);
         });
-
-        // Event delegation — one listener on the container
-        roleChecklistWrap.onchange = (e) => {
-            const input = e.target.closest('input[type="radio"]');
-            if (!input) return;
-            const pid = input.dataset.playerId;
-            const role = input.dataset.role;
-            if (role === "") {
-                // Unassign: emit checklist with assign=false for current role
-                const currentRole = assignedRoles[pid] || "";
-                if (currentRole) {
-                    socket.emit("gm:assignRoleChecklist", {
-                        playerId: pid,
-                        role: currentRole,
-                        assign: false,
-                    });
-                }
-            } else {
-                socket.emit("gm:assignRoleChecklist", {
-                    playerId: pid,
-                    role,
-                    assign: true,
-                });
-            }
-        };
     }
 
     // ── Module toggles ────────────────────────────────────────────────────────
@@ -643,26 +649,5 @@
         });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    function toast(msg, type = "") {
-        const c = document.getElementById("toast-container");
-        const t = document.createElement("div");
-        t.className = "toast " + type;
-        t.textContent = msg;
-        c.appendChild(t);
-        setTimeout(() => t.remove(), 3000);
-    }
-
-    function escHtml(s) {
-        return String(s).replace(
-            /[<>"'&]/g,
-            (c) =>
-                ({
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#39;",
-                    "&": "&amp;",
-                })[c],
-        );
-    }
+    // toast and escHtml are provided globally by ws-client.js
 })();

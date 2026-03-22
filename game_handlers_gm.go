@@ -6,6 +6,13 @@ import (
 	"sort"
 )
 
+// playerSnapshot pairs a player ID with its pre-built private state payload.
+// Used to batch private-state deliveries after releasing the game lock.
+type playerSnapshot struct {
+	playerID string
+	state    map[string]interface{}
+}
+
 func (g *GameState) handleSetPoints(h *Hub, c *Client, m inMsg) {
 	if c.role != "gm" {
 		return
@@ -158,22 +165,14 @@ func (g *GameState) handleAssignRoleChecklist(h *Hub, c *Client, m inMsg) {
 		}
 	}
 
-	// Build snapshots for affected player and GM
-	playerSnap := g.privateState(p)
-
-	// Collect all player snaps since role counts changed
-	type pending struct {
-		playerID string
-		state    map[string]interface{}
-	}
-	privates := make([]pending, 0, len(g.players))
+	// Collect snapshots for all players since role counts changed, plus the GM.
+	privates := make([]playerSnapshot, 0, len(g.players))
 	for _, pl := range g.players {
-		privates = append(privates, pending{playerID: pl.ID, state: g.privateState(pl)})
+		privates = append(privates, playerSnapshot{playerID: pl.ID, state: g.privateState(pl)})
 	}
 	gmSnap := g.gmState()
 	g.mu.Unlock()
 
-	_ = playerSnap
 	for _, pp := range privates {
 		if pc := h.findPlayer(pp.playerID); pc != nil {
 			h.deliver(pc, pp.state)
@@ -241,15 +240,9 @@ func (g *GameState) handleRandomizeRoles(h *Hub, c *Client, m inMsg) {
 		}
 	}
 
-	privates := make([]struct {
-		playerID string
-		state    map[string]interface{}
-	}, 0, len(g.players))
+	privates := make([]playerSnapshot, 0, len(g.players))
 	for _, pl := range g.players {
-		privates = append(privates, struct {
-			playerID string
-			state    map[string]interface{}
-		}{playerID: pl.ID, state: g.privateState(pl)})
+		privates = append(privates, playerSnapshot{playerID: pl.ID, state: g.privateState(pl)})
 	}
 	gmSnap := g.gmState()
 	g.mu.Unlock()
@@ -271,15 +264,9 @@ func (g *GameState) handleResetRoles(h *Hub, c *Client) {
 	g.roles = make(map[string]string)
 	g.revealedRoles = make(map[string]bool)
 
-	privates := make([]struct {
-		playerID string
-		state    map[string]interface{}
-	}, 0, len(g.players))
+	privates := make([]playerSnapshot, 0, len(g.players))
 	for _, pl := range g.players {
-		privates = append(privates, struct {
-			playerID string
-			state    map[string]interface{}
-		}{playerID: pl.ID, state: g.privateState(pl)})
+		privates = append(privates, playerSnapshot{playerID: pl.ID, state: g.privateState(pl)})
 	}
 	gmSnap := g.gmState()
 	g.mu.Unlock()

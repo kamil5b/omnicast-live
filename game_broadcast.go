@@ -12,13 +12,9 @@ func (g *GameState) broadcastPublicState(h *Hub) {
 	pub := g.publicState()
 	gm := g.gmState()
 
-	type pending struct {
-		playerID string
-		state    map[string]interface{}
-	}
-	privates := make([]pending, 0, len(g.players))
+	privates := make([]playerSnapshot, 0, len(g.players))
 	for _, p := range g.players {
-		privates = append(privates, pending{playerID: p.ID, state: g.privateState(p)})
+		privates = append(privates, playerSnapshot{playerID: p.ID, state: g.privateState(p)})
 	}
 	g.mu.Unlock()
 
@@ -66,4 +62,32 @@ func (g *GameState) resetAllScores(h *Hub) {
 	}
 	g.mu.Unlock()
 	g.broadcastPublicState(h)
+}
+
+func (g *GameState) handleGMShowAllRoles(h *Hub, c *Client, m inMsg) {
+	if c.role != "gm" {
+		return
+	}
+	g.setShowAllRoles(h, m.boolVal("show"))
+}
+
+func (g *GameState) handleGMResetScores(h *Hub, c *Client) {
+	if c.role != "gm" {
+		return
+	}
+	g.resetAllScores(h)
+}
+
+func (g *GameState) handleOperatorShowAllRoles(h *Hub, c *Client, m inMsg) {
+	if c.role != "operator" {
+		return
+	}
+	g.setShowAllRoles(h, m.boolVal("show"))
+}
+
+func (g *GameState) handleOperatorResetScores(h *Hub, c *Client) {
+	if c.role != "operator" {
+		return
+	}
+	g.resetAllScores(h)
 }

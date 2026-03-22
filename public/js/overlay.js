@@ -197,17 +197,5 @@
         return result;
     }
 
-    function escHtml(s) {
-        return String(s).replace(
-            /[<>"'&]/g,
-            (c) =>
-                ({
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#39;",
-                    "&": "&amp;",
-                })[c],
-        );
-    }
+    // escHtml is provided globally by ws-client.js
 })();

@@ -2,8 +2,9 @@ package main
 
 // ── State snapshot types ──────────────────────────────────────────────────────
 
-// publicPlayer is the player view sent to overlay, operator and other players.
-type publicPlayer struct {
+// gmPlayer is the player shape sent exclusively to GM connections.
+// It extends the public player fields with the secret role text.
+type gmPlayer struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Image         string `json:"image"`
@@ -11,26 +12,13 @@ type publicPlayer struct {
 	Status        string `json:"status"`
 	BuzzerEnabled bool   `json:"buzzerEnabled"`
 	Connected     bool   `json:"connected"`
+	Role          string `json:"role"`
 }
 
-// gmPlayer extends publicPlayer with the secret role (GM-only).
-type gmPlayer struct {
-	publicPlayer
-	Role string `json:"role"`
-}
-
-func (g *GameState) buildPublicPlayers() map[string]publicPlayer {
-	m := make(map[string]publicPlayer, len(g.players))
+func (g *GameState) buildPublicPlayers() map[string]*player {
+	m := make(map[string]*player, len(g.players))
 	for id, p := range g.players {
-		m[id] = publicPlayer{
-			ID:            p.ID,
-			Name:          p.Name,
-			Image:         p.Image,
-			Points:        p.Points,
-			Status:        p.Status,
-			BuzzerEnabled: p.BuzzerEnabled,
-			Connected:     p.Connected,
-		}
+		m[id] = p
 	}
 	return m
 }
@@ -39,16 +27,14 @@ func (g *GameState) buildGMPlayers() map[string]gmPlayer {
 	m := make(map[string]gmPlayer, len(g.players))
 	for id, p := range g.players {
 		m[id] = gmPlayer{
-			publicPlayer: publicPlayer{
-				ID:            p.ID,
-				Name:          p.Name,
-				Image:         p.Image,
-				Points:        p.Points,
-				Status:        p.Status,
-				BuzzerEnabled: p.BuzzerEnabled,
-				Connected:     p.Connected,
-			},
-			Role: g.roles[p.ID],
+			ID:            p.ID,
+			Name:          p.Name,
+			Image:         p.Image,
+			Points:        p.Points,
+			Status:        p.Status,
+			BuzzerEnabled: p.BuzzerEnabled,
+			Connected:     p.Connected,
+			Role:          g.roles[p.ID],
 		}
 	}
 	return m
@@ -98,13 +84,13 @@ func (g *GameState) gmState() map[string]interface{} {
 		votes[k] = v
 	}
 	base["votes"] = votes
-	// explicit roles map (playerID → roleText) for GM checklist rendering
+	// Explicit roles map (playerID → roleText) for GM checklist rendering.
 	rolesMap := make(map[string]string, len(g.roles))
 	for k, v := range g.roles {
 		rolesMap[k] = v
 	}
 	base["roles"] = rolesMap
-	// role definitions and per-player reveal state (GM only)
+	// Role definitions and per-player reveal state (GM only).
 	defs := make([]RoleDefinition, len(g.roleDefinitions))
 	copy(defs, g.roleDefinitions)
 	base["roleDefinitions"] = defs

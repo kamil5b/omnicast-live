@@ -1,35 +1,73 @@
 package main
 
 import (
-	"encoding/json"
 	"net"
 	"net/http"
 	"sync"
+	"time"
+
+	"encoding/json"
 
 	"golang.org/x/time/rate"
 )
 
 // ── Per-IP rate limiter ───────────────────────────────────────────────────────
 
+const ipLimiterTTL = 5 * time.Minute
+
+// ipEntry pairs a rate limiter with the last time it was accessed.
+type ipEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
 // ipLimiter maps a client IP address to its per-IP rate limiter.
+// Entries that have not been accessed within ipLimiterTTL are evicted
+// periodically to prevent unbounded memory growth.
 type ipLimiter struct {
-	mu       sync.Mutex
-	limiters map[string]*rate.Limiter
+	mu      sync.Mutex
+	entries map[string]*ipEntry
 }
 
 func newIPLimiter() *ipLimiter {
-	return &ipLimiter{limiters: make(map[string]*rate.Limiter)}
+	l := &ipLimiter{entries: make(map[string]*ipEntry)}
+	go l.evictLoop()
+	return l
 }
 
+// get returns the rate limiter for ip, creating one if needed.
+// r and b are only used when creating a new limiter; existing limiters keep
+// their original parameters.
 func (l *ipLimiter) get(ip string, r rate.Limit, b int) *rate.Limiter {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if lim, ok := l.limiters[ip]; ok {
-		return lim
+	if e, ok := l.entries[ip]; ok {
+		e.lastSeen = time.Now()
+		return e.limiter
 	}
 	lim := rate.NewLimiter(r, b)
-	l.limiters[ip] = lim
+	l.entries[ip] = &ipEntry{limiter: lim, lastSeen: time.Now()}
 	return lim
+}
+
+// evictLoop runs in the background and removes stale entries every TTL period.
+func (l *ipLimiter) evictLoop() {
+	ticker := time.NewTicker(ipLimiterTTL)
+	defer ticker.Stop()
+	for range ticker.C {
+		l.evict()
+	}
+}
+
+func (l *ipLimiter) evict() {
+	cutoff := time.Now().Add(-ipLimiterTTL)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for ip, e := range l.entries {
+		if e.lastSeen.Before(cutoff) {
+			delete(l.entries, ip)
+		}
+	}
 }
 
 var (

@@ -84,7 +84,7 @@
 
     socket.on("joined", ({ id }) => {
         myId = id;
-        playerHeader.style.display = "flex";
+        playerHeader.classList.remove("hidden");
     });
 
     socket.on("playerState", (state) => {
@@ -159,10 +159,10 @@
         const displayMs = Math.max(3000, wordCount * 5 * 1000); // 5s per word, min 3s
 
         gmMessageText.textContent = text;
-        gmMessageOverlay.style.display = "flex";
+        gmMessageOverlay.classList.add("visible");
 
         gmMsgTimer = setTimeout(() => {
-            gmMessageOverlay.style.display = "none";
+            gmMessageOverlay.classList.remove("visible");
             gmMsgTimer = null;
         }, displayMs);
     }
@@ -173,7 +173,7 @@
             clearTimeout(gmMsgTimer);
             gmMsgTimer = null;
         }
-        gmMessageOverlay.style.display = "none";
+        gmMessageOverlay.classList.remove("visible");
     });
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -202,6 +202,7 @@
         statusBadge.textContent = st;
 
         statusBanner.className = "status-banner";
+        statusBanner.textContent = "";
         if (st === "DEAD") {
             statusBanner.textContent = "💀 You are DEAD — spectator mode";
             statusBanner.classList.add("dead");
@@ -349,27 +350,5 @@
         buzzerBtn.textContent = "⏳ Waiting…";
     });
 
-    // ── Toast helper ──────────────────────────────────────────────────────────
-    function toast(msg, type = "") {
-        const c = document.getElementById("toast-container");
-        const t = document.createElement("div");
-        t.className = "toast " + type;
-        t.textContent = msg;
-        c.appendChild(t);
-        setTimeout(() => t.remove(), 3000);
-    }
-
-    function escHtml(s) {
-        return String(s).replace(
-            /[<>"'&]/g,
-            (c) =>
-                ({
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#39;",
-                    "&": "&amp;",
-                })[c],
-        );
-    }
+    // toast and escHtml are provided globally by ws-client.js
 })();
