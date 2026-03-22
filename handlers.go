@@ -21,32 +21,49 @@ import (
 func newUUID() string { return uuid.New().String() }
 
 func getLocalIP() string {
-	// Prefer these interface names (in order)
-	prefixes := []string{"eth", "en", "wlan"}
-
 	ifaces, _ := net.Interfaces()
 
-	// First pass: try to find preferred interfaces
-	for _, prefix := range prefixes {
-		for _, iface := range ifaces {
-			if strings.HasPrefix(iface.Name, prefix) && iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagLoopback == 0 {
-				if ip := extractIPv4(iface); ip != "" {
-					return ip
-				}
-			}
-		}
-	}
+	// Skip WSL and VM interfaces
+	skipPrefixes := []string{"veth", "docker", "br-"}
 
-	// Fallback: return any non-loopback IPv4
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-		if ip := extractIPv4(iface); ip != "" {
-			return ip
+
+		// Skip WSL/VM interfaces
+		skip := false
+		for _, prefix := range skipPrefixes {
+			if strings.HasPrefix(iface.Name, prefix) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+
+		addrs, _ := iface.Addrs()
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			// Skip WSL IP range (172.16-31.x.x)
+			if ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31 {
+				continue
+			}
+			if ip4 := ip.To4(); ip4 != nil {
+				return ip4.String()
+			}
 		}
 	}
-
 	return "localhost"
 }
 
