@@ -91,7 +91,7 @@ func extractIPv4(iface net.Interface) string {
 func copyDefaultTemplates() {
 	entries, _ := defaultTemplatesFS.ReadDir("templates")
 	for _, e := range entries {
-		dest := filepath.Join(templatesDir, e.Name())
+		dest := filepath.Join(cfg.TemplatesDir, e.Name())
 		if _, err := os.Stat(dest); err == nil {
 			continue
 		}
@@ -107,7 +107,7 @@ func loadTemplateFile(name string) *templateFile {
 	if safe == "" {
 		return nil
 	}
-	data, err := os.ReadFile(filepath.Join(templatesDir, safe+".json"))
+	data, err := os.ReadFile(filepath.Join(cfg.TemplatesDir, safe+".json"))
 	if err != nil {
 		return nil
 	}
@@ -132,7 +132,7 @@ type tmplResponse struct {
 
 func handleQR(w http.ResponseWriter, r *http.Request) {
 	ip := getLocalIP()
-	url := fmt.Sprintf("http://%s:%d", ip, appPort)
+	url := fmt.Sprintf("http://%s:%d", ip, cfg.Port)
 	png, err := goqr.Encode(url, goqr.Medium, 256)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "QR generation failed")
@@ -147,8 +147,9 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadB)
-	if err := r.ParseMultipartForm(maxUploadB); err != nil {
+	maxBytes := int64(cfg.MaxUploadMB) << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+	if err := r.ParseMultipartForm(maxBytes); err != nil {
 		writeError(w, http.StatusBadRequest, "file too large or bad request")
 		return
 	}
@@ -181,7 +182,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	filename := newUUID() + ext
-	dst, err := os.Create(filepath.Join(uploadsDir, filename))
+	dst, err := os.Create(filepath.Join(cfg.UploadsDir, filename))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save file")
 		return
@@ -193,7 +194,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{
 		"filename": filename,
-		"url":      "/uploads/" + filename,
+		"url":      "/" + cfg.UploadsDir + "/" + filename,
 	})
 }
 
@@ -209,13 +210,13 @@ func handleTemplates(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetTemplates(w http.ResponseWriter, _ *http.Request) {
-	entries, _ := os.ReadDir(templatesDir)
+	entries, _ := os.ReadDir(cfg.TemplatesDir)
 	results := make([]tmplResponse, 0)
 	for _, e := range entries {
 		if !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(templatesDir, e.Name()))
+		data, err := os.ReadFile(filepath.Join(cfg.TemplatesDir, e.Name()))
 		if err != nil {
 			continue
 		}
@@ -261,7 +262,7 @@ func handleSaveTemplate(w http.ResponseWriter, r *http.Request) {
 		"modules":     body.Modules,
 	}
 	data, _ := json.MarshalIndent(payload, "", "  ")
-	if err := os.WriteFile(filepath.Join(templatesDir, safeName+".json"), data, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(cfg.TemplatesDir, safeName+".json"), data, 0644); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save template")
 		return
 	}

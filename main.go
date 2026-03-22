@@ -19,19 +19,18 @@ var publicFS embed.FS
 //go:embed templates
 var defaultTemplatesFS embed.FS
 
-const (
-	appPort      = 3000
-	uploadsDir   = "uploads"
-	templatesDir = "templates"
-	maxUploadB   = 5 << 20 // 5 MB
-)
-
 // safeNameRe strips characters that are unsafe for file-system names.
 var safeNameRe = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
+// cfg is the resolved runtime configuration, populated in main() before any
+// handler or helper touches it.
+var cfg *Config
+
 func main() {
-	os.MkdirAll(uploadsDir, 0755)
-	os.MkdirAll(templatesDir, 0755)
+	cfg = loadConfig()
+
+	os.MkdirAll(cfg.UploadsDir, 0755)
+	os.MkdirAll(cfg.TemplatesDir, 0755)
 	copyDefaultTemplates()
 
 	hub := newHub()
@@ -41,10 +40,12 @@ func main() {
 
 	// Convenience wrappers for the two rate-limit tiers.
 	genRL := func(h http.HandlerFunc) http.HandlerFunc {
-		return rateLimit(h, generalLimiter, rate.Every(time.Minute/200), 200)
+		rpm := cfg.GeneralRateLimit
+		return rateLimit(h, generalLimiter, rate.Every(time.Minute/time.Duration(rpm)), rpm)
 	}
 	upRL := func(h http.HandlerFunc) http.HandlerFunc {
-		return rateLimit(h, uploadLimiter, rate.Every(time.Minute/30), 30)
+		rpm := cfg.UploadRateLimit
+		return rateLimit(h, uploadLimiter, rate.Every(time.Minute/time.Duration(rpm)), rpm)
 	}
 
 	// WebSocket
@@ -58,7 +59,7 @@ func main() {
 	mux.HandleFunc("/api/templates", genRL(handleTemplates))
 
 	// On-disk uploads
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadsDir))))
 
 	// Extension-free HTML routes served from the embedded public/ FS.
 	pubFS, _ := fs.Sub(publicFS, "public")
@@ -76,15 +77,15 @@ func main() {
 
 	ip := getLocalIP()
 	log.Printf("\n🎮  OmniCast Live Engine")
-	log.Printf("   Local:    http://localhost:%d", appPort)
-	log.Printf("   Network:  http://%s:%d", ip, appPort)
-	log.Printf("   GM:       http://%s:%d/gm", ip, appPort)
-	log.Printf("   Operator: http://%s:%d/operator", ip, appPort)
-	log.Printf("   Overlay:  http://%s:%d/overlay", ip, appPort)
-	log.Printf("   Players:  http://%s:%d  (scan QR)\n", ip, appPort)
+	log.Printf("   Local:    http://localhost:%d", cfg.Port)
+	log.Printf("   Network:  http://%s:%d", ip, cfg.Port)
+	log.Printf("   GM:       http://%s:%d/gm", ip, cfg.Port)
+	log.Printf("   Operator: http://%s:%d/operator", ip, cfg.Port)
+	log.Printf("   Overlay:  http://%s:%d/overlay", ip, cfg.Port)
+	log.Printf("   Players:  http://%s:%d  (scan QR)\n", ip, cfg.Port)
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("0.0.0.0:%d", appPort),
+		Addr:         fmt.Sprintf("0.0.0.0:%d", cfg.Port),
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
