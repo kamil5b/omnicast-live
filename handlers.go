@@ -22,27 +22,12 @@ func newUUID() string { return uuid.New().String() }
 
 func getLocalIP() string {
 	ifaces, _ := net.Interfaces()
-
-	// Skip WSL and VM interfaces
-	skipPrefixes := []string{"veth", "docker", "br-"}
+	var fallback string
 
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-
-		// Skip WSL/VM interfaces
-		skip := false
-		for _, prefix := range skipPrefixes {
-			if strings.HasPrefix(iface.Name, prefix) {
-				skip = true
-				break
-			}
-		}
-		if skip {
-			continue
-		}
-
 		addrs, _ := iface.Addrs()
 		for _, addr := range addrs {
 			var ip net.IP
@@ -55,14 +40,27 @@ func getLocalIP() string {
 			if ip == nil || ip.IsLoopback() {
 				continue
 			}
-			// Skip WSL IP range (172.16-31.x.x)
-			if ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31 {
-				continue
-			}
 			if ip4 := ip.To4(); ip4 != nil {
-				return ip4.String()
+				// Prefer 192.168.x.x range (real network)
+				if ip4[0] == 192 && ip4[1] == 168 {
+					return ip4.String()
+				}
+				// Otherwise use 10.x.x.x
+				if ip4[0] == 10 {
+					if fallback == "" {
+						fallback = ip4.String()
+					}
+					return ip4.String()
+				}
+				// Save as fallback but keep looking
+				if fallback == "" {
+					fallback = ip4.String()
+				}
 			}
 		}
+	}
+	if fallback != "" {
+		return fallback
 	}
 	return "localhost"
 }
