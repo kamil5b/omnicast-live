@@ -3,29 +3,10 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 APP     := omnicast-live
-MODULE  := $(shell go env GOMODULE 2>/dev/null || head -1 go.mod | awk '{print $$2}')
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 OUT_DIR := dist
-
-# Supported targets: OS/ARCH pairs
-TARGETS := \
-	windows/amd64 \
-	windows/arm64 \
-	linux/amd64   \
-	linux/arm64   \
-	darwin/amd64  \
-	darwin/arm64
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ──────────────────────────────────────────────────────────────────────────────
-
-# bin_name <os> <arch>  → e.g. omnicast-live-linux-arm64  (+ .exe on windows)
-define bin_name
-$(OUT_DIR)/$(APP)-$(1)-$(2)$(if $(filter windows,$(1)),.exe,)
-endef
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Default target
@@ -38,7 +19,7 @@ help:
 	@echo ""
 	@echo "  OmniCast Live build targets"
 	@echo ""
-	@echo "  make all              Build all platforms ($(words $(TARGETS)) binaries)"
+	@echo "  make all              Build all platforms"
 	@echo "  make windows          Build Windows   x64 + arm64"
 	@echo "  make linux            Build Linux     x64 + arm64"
 	@echo "  make darwin           Build macOS     x64 + arm64"
@@ -59,49 +40,61 @@ help:
 # ──────────────────────────────────────────────────────────────────────────────
 
 .PHONY: all
-all: $(TARGETS:%=build-%)
+all: windows linux darwin
 
-# Generic pattern rule:  build-<os>/<arch>
-.PHONY: build-%
-build-%:
-	$(eval OS   := $(word 1,$(subst /, ,$*)))
-	$(eval ARCH := $(word 2,$(subst /, ,$*)))
-	$(eval BIN  := $(call bin_name,$(OS),$(ARCH)))
+# ── Windows ───────────────────────────────────────────────────────────────────
+
+.PHONY: windows windows-amd64 windows-arm64
+
+windows: windows-amd64 windows-arm64
+
+windows-amd64:
 	@mkdir -p $(OUT_DIR)
-	@echo "  →  $(BIN)"
-	@CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) \
-		go build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN) .
+	@echo "  →  $(OUT_DIR)/$(APP)-windows-amd64.exe"
+	@CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+	 go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT_DIR)/$(APP)-windows-amd64.exe .
 
-# ── OS-group shortcuts ────────────────────────────────────────────────────────
+windows-arm64:
+	@mkdir -p $(OUT_DIR)
+	@echo "  →  $(OUT_DIR)/$(APP)-windows-arm64.exe"
+	@CGO_ENABLED=0 GOOS=windows GOARCH=arm64 \
+	 go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT_DIR)/$(APP)-windows-arm64.exe .
 
-.PHONY: windows
-windows: build-windows/amd64 build-windows/arm64
+# ── Linux ─────────────────────────────────────────────────────────────────────
 
-.PHONY: linux
-linux: build-linux/amd64 build-linux/arm64
+.PHONY: linux linux-amd64 linux-arm64
 
-.PHONY: darwin
-darwin: build-darwin/amd64 build-darwin/arm64
+linux: linux-amd64 linux-arm64
 
-# ── Single-target shortcuts ───────────────────────────────────────────────────
+linux-amd64:
+	@mkdir -p $(OUT_DIR)
+	@echo "  →  $(OUT_DIR)/$(APP)-linux-amd64"
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+	 go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT_DIR)/$(APP)-linux-amd64 .
 
-.PHONY: windows-amd64
-windows-amd64: build-windows/amd64
+linux-arm64:
+	@mkdir -p $(OUT_DIR)
+	@echo "  →  $(OUT_DIR)/$(APP)-linux-arm64"
+	@CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+	 go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT_DIR)/$(APP)-linux-arm64 .
 
-.PHONY: windows-arm64
-windows-arm64: build-windows/arm64
+# ── macOS ─────────────────────────────────────────────────────────────────────
 
-.PHONY: linux-amd64
-linux-amd64: build-linux/amd64
+.PHONY: darwin darwin-amd64 darwin-arm64
 
-.PHONY: linux-arm64
-linux-arm64: build-linux/arm64
+darwin: darwin-amd64 darwin-arm64
 
-.PHONY: darwin-amd64
-darwin-amd64: build-darwin/amd64
+darwin-amd64:
+	@mkdir -p $(OUT_DIR)
+	@echo "  →  $(OUT_DIR)/$(APP)-darwin-amd64"
+	@CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+	 go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT_DIR)/$(APP)-darwin-amd64 .
 
-.PHONY: darwin-arm64
-darwin-arm64: build-darwin/arm64
+darwin-arm64:
+	@mkdir -p $(OUT_DIR)
+	@echo "  →  $(OUT_DIR)/$(APP)-darwin-arm64"
+	@CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+	 go build -trimpath -ldflags "$(LDFLAGS)" -o $(OUT_DIR)/$(APP)-darwin-arm64 .
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Dev helpers

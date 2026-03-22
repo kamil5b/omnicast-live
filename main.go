@@ -91,5 +91,6 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+
 	log.Fatal(srv.ListenAndServe())
 }

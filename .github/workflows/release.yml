@@ -53,8 +53,7 @@ jobs:
                   CGO_ENABLED: 0
               run: |
                   VERSION="${{ github.ref_name }}"
-                  VERSION_SAFE=$(echo "${VERSION}" | sed 's/[^a-zA-Z0-9]/-/g')
-                  BIN="omnicast-live-${{ matrix.os }}-${{ matrix.arch }}-${VERSION_SAFE}${{ matrix.ext }}"
+                  BIN="omnicast-live-${{ matrix.os }}-${{ matrix.arch }}-${VERSION}${{ matrix.ext }}"
                   mkdir -p dist
                   go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN}" .
                   echo "bin=${BIN}" >> "$GITHUB_OUTPUT"
