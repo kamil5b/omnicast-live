@@ -376,6 +376,17 @@ func (g *GameState) handleCloseVoting(h *Hub, c *Client) {
 	g.broadcastPublicState(h)
 }
 
+func (g *GameState) handleHideVotes(h *Hub, c *Client) {
+	if c.role != "gm" {
+		return
+	}
+	g.mu.Lock()
+	g.votesRevealed = false
+	g.revealedVotes = nil
+	g.mu.Unlock()
+	g.broadcastPublicState(h)
+}
+
 func (g *GameState) handleRevealVotes(h *Hub, c *Client) {
 	if c.role != "gm" {
 		return

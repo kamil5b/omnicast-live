@@ -58,6 +58,8 @@ func (g *GameState) dispatch(h *Hub, c *Client, raw []byte) {
 		g.handleCloseVoting(h, c)
 	case "gm:revealVotes":
 		g.handleRevealVotes(h, c)
+	case "gm:hideVotes":
+		g.handleHideVotes(h, c)
 	case "gm:showAllRoles":
 		if c.role == "gm" {
 			g.setShowAllRoles(h, m.boolVal("show"))

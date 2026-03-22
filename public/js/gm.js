@@ -138,8 +138,8 @@
           ${
               modules?.roles !== false
                   ? `
-            <button class="btn btn-sm ${isRoleRevealed ? "btn-orange" : ""}" data-action="revealrole" data-id="${p.id}" data-reveal="${isRoleRevealed ? "false" : "true"}" title="${isRoleRevealed ? "Hide role from player" : "Reveal role to player"}">
-              ${isRoleRevealed ? "🙈 Hide Role" : "👁 Reveal Role"}
+            <button class="btn btn-sm ${isRoleRevealed ? "btn-orange" : ""}" data-action="revealrole" data-id="${p.id}" data-reveal="${isRoleRevealed ? "false" : "true"}" title="${isRoleRevealed ? "Hide role from overlay" : "Reveal role to overlay"}">
+              ${isRoleRevealed ? "🙈 Hide from Overlay" : "👁 Show on Overlay"}
             </button>
           `
                   : ""
@@ -622,6 +622,9 @@
     document
         .getElementById("reveal-votes-btn")
         .addEventListener("click", () => socket.emit("gm:revealVotes"));
+    document
+        .getElementById("hide-votes-btn")
+        .addEventListener("click", () => socket.emit("gm:hideVotes"));
     document
         .getElementById("show-roles-btn")
         .addEventListener("click", () =>

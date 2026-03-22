@@ -65,17 +65,26 @@ func (g *GameState) publicState() map[string]interface{} {
 	if g.revealedVotes != nil {
 		rv = g.revealedVotes
 	}
+	// Build the per-player overlay reveal map: playerID → roleText (only for
+	// players whose role has been individually revealed to the overlay).
+	overlayRevealed := make(map[string]string, len(g.revealedRoles))
+	for pid, revealed := range g.revealedRoles {
+		if revealed {
+			overlayRevealed[pid] = g.roles[pid]
+		}
+	}
 	return map[string]interface{}{
-		"type":          "gameState",
-		"players":       g.buildPublicPlayers(),
-		"buzzerLocked":  g.buzzerLocked,
-		"buzzerWinner":  winner,
-		"votingOpen":    g.votingOpen,
-		"votesRevealed": g.votesRevealed,
-		"revealedVotes": rv,
-		"showAllRoles":  g.showAllRoles,
-		"activeModules": g.activeModules,
-		"template":      g.template,
+		"type":            "gameState",
+		"players":         g.buildPublicPlayers(),
+		"buzzerLocked":    g.buzzerLocked,
+		"buzzerWinner":    winner,
+		"votingOpen":      g.votingOpen,
+		"votesRevealed":   g.votesRevealed,
+		"revealedVotes":   rv,
+		"showAllRoles":    g.showAllRoles,
+		"activeModules":   g.activeModules,
+		"template":        g.template,
+		"overlayRevealed": overlayRevealed,
 	}
 }
 
@@ -134,10 +143,6 @@ func (g *GameState) privateState(p *player) map[string]interface{} {
 		}
 	}
 
-	// A role is considered "revealed" to this player if GM revealed it individually
-	// OR showAllRoles is globally on.
-	roleRevealed := g.revealedRoles[p.ID] || g.showAllRoles
-
 	return map[string]interface{}{
 		"type":          "playerState",
 		"id":            p.ID,
@@ -147,7 +152,6 @@ func (g *GameState) privateState(p *player) map[string]interface{} {
 		"status":        p.Status,
 		"buzzerEnabled": p.BuzzerEnabled,
 		"role":          g.roles[p.ID],
-		"roleRevealed":  roleRevealed,
 		"votingOpen":    g.votingOpen,
 		"votingPlayers": votingPlayers,
 		"buzzerLocked":  g.buzzerLocked,

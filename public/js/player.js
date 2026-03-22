@@ -214,16 +214,6 @@
         if (s.activeModules?.roles !== false) {
             roleCard.style.display = "block";
             roleValue.textContent = s.role || "(No role assigned)";
-
-            // If the GM has revealed this player's role (individually or globally),
-            // show it immediately without requiring press-and-hold.
-            if (s.roleRevealed) {
-                roleCard.querySelector(".hold-hint").style.display = "none";
-                roleValue.classList.add("revealed");
-            } else {
-                roleCard.querySelector(".hold-hint").style.display = "";
-                roleValue.classList.remove("revealed");
-            }
         } else {
             roleCard.style.display = "none";
         }
@@ -330,11 +320,9 @@
     });
 
     // ── Privacy Shield (role reveal) ──────────────────────────────────────────
-    // Only active when GM has NOT already revealed the role (roleRevealed=false).
     let holdTimer = null;
 
     function startReveal(e) {
-        if (myState?.roleRevealed) return; // already revealed by GM, no need to hold
         e.preventDefault();
         holdTimer = setTimeout(() => {
             roleValue.classList.add("revealed");
@@ -342,7 +330,6 @@
     }
 
     function endReveal() {
-        if (myState?.roleRevealed) return;
         roleValue.classList.remove("revealed");
         clearTimeout(holdTimer);
     }

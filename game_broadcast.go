@@ -32,8 +32,11 @@ func (g *GameState) broadcastPublicState(h *Hub) {
 	}
 }
 
-// setShowAllRoles toggles the showAllRoles flag and, when enabled, pushes
-// every player's role to the overlay. Used by both GM and operator.
+// setShowAllRoles toggles the showAllRoles flag. When enabled, every player's
+// role is written into revealedRoles so that overlayRevealed in publicState is
+// consistent for the overlay on the next broadcast (and on reconnect).
+// When disabled, only the per-player overrides that were set explicitly survive;
+// the bulk entries added by this call are removed.
 func (g *GameState) setShowAllRoles(h *Hub, show bool) {
 	g.mu.Lock()
 	if !g.activeModules.Roles {
@@ -41,22 +44,17 @@ func (g *GameState) setShowAllRoles(h *Hub, show bool) {
 		return
 	}
 	g.showAllRoles = show
-	var rolesMsg map[string]interface{}
 	if show {
-		rolesMsg = map[string]interface{}{"type": "rolesRevealed"}
 		for _, p := range g.players {
-			role := g.roles[p.ID]
-			if role == "" {
-				role = "—"
-			}
-			rolesMsg[p.ID] = role
+			g.revealedRoles[p.ID] = true
 		}
+	} else {
+		// Clear the map entirely — per-player manual reveals are also cleared,
+		// matching the expectation that "hide all" means nothing shows.
+		g.revealedRoles = make(map[string]bool)
 	}
 	g.mu.Unlock()
 
-	if show {
-		h.broadcastRole("overlay", rolesMsg)
-	}
 	g.broadcastPublicState(h)
 }
 
