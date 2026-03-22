@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+  <meta name="theme-color" content="#0d0d1a"/>
+  <title>OmniCast — Player</title>
+  <link rel="stylesheet" href="/css/common.css"/>
+  <style>
+    body { padding:1rem; display:flex; flex-direction:column; align-items:center; }
+    .player-header { display:flex; align-items:center; gap:.8rem; margin-bottom:1.2rem; width:100%; max-width:420px; }
+    .player-avatar { width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid var(--accent); }
+    .player-info h2 { font-size:1.1rem; }
+    .player-info .pts { font-size:1.4rem; font-weight:700; color:var(--accent); }
+    .pts-change { font-size:.85rem; color:var(--text-muted); min-height:1.1em; }
+
+    /* Role card with privacy shield */
+    .role-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1rem;
+      width: 100%; max-width:420px;
+      margin-bottom: 1rem;
+      text-align: center;
+      display: none; /* hidden when roles module off */
+    }
+    .role-label { font-size:.8rem; color:var(--text-muted); margin-bottom:.4rem; letter-spacing:.1em; }
+    .role-value {
+      font-size:1.5rem; font-weight:700;
+      filter: blur(12px);
+      user-select: none;
+      transition: filter .25s;
+      min-height: 2rem;
+      cursor: pointer;
+    }
+    .role-value.revealed { filter: none; }
+    .hold-hint { font-size:.75rem; color:var(--text-muted); margin-top:.4rem; }
+
+    /* Buzzer */
+    .buzzer-section { width:100%; max-width:420px; margin-bottom:1rem; display:none; }
+    .buzzer-btn {
+      width:100%; padding:2rem;
+      font-size:1.5rem; font-weight:900;
+      background: var(--accent);
+      border-radius: 50px;
+      transition: background .2s, transform .1s;
+    }
+    .buzzer-btn:disabled { background:#444; }
+    .buzzer-btn.winner { background: var(--success); animation: pulse 1s infinite; }
+    .buzzer-btn.loser  { background: #333; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(76,175,80,.5)} 50%{box-shadow:0 0 0 16px rgba(76,175,80,0)} }
+
+    /* Voting */
+    .voting-section { width:100%; max-width:420px; margin-bottom:1rem; display:none; }
+    .vote-target {
+      display:flex; align-items:center; gap:.8rem;
+      background: var(--surface2);
+      border:2px solid transparent;
+      border-radius: var(--radius);
+      padding:.6rem;
+      margin-bottom:.5rem;
+      cursor:pointer;
+      transition: border-color .15s;
+    }
+    .vote-target:hover, .vote-target.selected { border-color: var(--accent); }
+    .vote-target img { width:40px; height:40px; border-radius:50%; object-fit:cover; }
+    .vote-target .vote-name { font-weight:600; }
+    .vote-confirm-btn { width:100%; margin-top:.5rem; background:var(--accent); }
+
+    /* Status banner */
+    .status-banner { font-size:.85rem; padding:.3rem .8rem; border-radius:var(--radius); margin-bottom:.8rem; text-align:center; display:none; }
+    .status-banner.dead { background:#263238; color:#90a4ae; display:block; }
+    .status-banner.mute { background:#311b92; color:#ce93d8; display:block; }
+
+    /* Vote result reveal */
+    .vote-reveal { width:100%; max-width:420px; margin-bottom:1rem; display:none; }
+    .vote-reveal-item { display:flex; align-items:center; gap:.6rem; margin-bottom:.4rem; font-size:.95rem; }
+    .vote-bar { flex:1; background:var(--surface2); border-radius:4px; height:8px; overflow:hidden; }
+    .vote-bar-fill { height:100%; background:var(--accent); border-radius:4px; }
+
+    .conn-bar { display:flex; align-items:center; font-size:.8rem; color:var(--text-muted); margin-bottom:1rem; }
+  </style>
+</head>
+<body>
+  <div class="conn-bar">
+    <span class="conn-dot offline" id="conn-dot"></span>
+    <span id="conn-status">Connecting…</span>
+  </div>
+
+  <div class="player-header" id="player-header" style="display:none">
+    <img class="player-avatar" id="player-avatar" src="/img/default-avatar.svg" alt="You"/>
+    <div class="player-info">
+      <h2 id="player-name">—</h2>
+      <div class="pts" id="player-pts">0 pts</div>
+      <div class="pts-change" id="pts-change"></div>
+    </div>
+    <div style="margin-left:auto">
+      <span id="player-status-badge" class="badge"></span>
+    </div>
+  </div>
+
+  <div class="status-banner" id="status-banner"></div>
+
+  <!-- Role card (privacy shield) -->
+  <div class="role-card" id="role-card">
+    <div class="role-label">YOUR SECRET ROLE</div>
+    <div class="role-value" id="role-value">—</div>
+    <div class="hold-hint">Press &amp; hold to reveal</div>
+  </div>
+
+  <!-- Buzzer -->
+  <div class="buzzer-section" id="buzzer-section">
+    <button class="buzzer-btn" id="buzzer-btn">⚡ BUZZ IN!</button>
+    <p style="text-align:center;font-size:.8rem;color:var(--text-muted);margin-top:.5rem" id="buzzer-status"></p>
+  </div>
+
+  <!-- Voting -->
+  <div class="voting-section" id="voting-section">
+    <div class="card">
+      <h3 style="margin-bottom:.8rem">🗳️ Vote</h3>
+      <div id="vote-list"></div>
+      <button class="btn btn-accent vote-confirm-btn" id="vote-confirm-btn" disabled>Confirm Vote</button>
+      <p style="font-size:.8rem;color:var(--text-muted);text-align:center;margin-top:.5rem" id="vote-status"></p>
+    </div>
+  </div>
+
+  <!-- Vote reveal -->
+  <div class="vote-reveal" id="vote-reveal">
+    <div class="card">
+      <h3 style="margin-bottom:.8rem">📊 Vote Results</h3>
+      <div id="vote-reveal-list"></div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/ws-client.js"></script>
+  <script src="/js/player.js"></script>
+</body>
+</html>

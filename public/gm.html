@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>OmniCast — Game Master</title>
+  <link rel="stylesheet" href="/css/common.css"/>
+  <style>
+    body { padding:1rem; }
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; flex-wrap:wrap; gap:.5rem; }
+    .page-header h1 { font-size:1.4rem; }
+    .section-title { font-size:1rem; font-weight:700; margin-bottom:.6rem; letter-spacing:.06em; color:var(--text-muted); text-transform:uppercase; }
+
+    /* QR */
+    .qr-img { display:block; margin:.6rem auto; max-width:150px; border-radius:8px; }
+    .join-url { font-size:.8rem; word-break:break-all; text-align:center; color:var(--text-muted); }
+
+    /* Player cards */
+    .players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.8rem; margin-bottom:1rem; }
+    .player-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: .8rem;
+      position: relative;
+    }
+    .player-card.dead  { filter: grayscale(.8); opacity:.7; }
+    .player-card.mute  { border: 1px solid var(--accent); }
+    .player-card-top { display:flex; align-items:center; gap:.6rem; margin-bottom:.6rem; }
+    .player-card-avatar { width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid var(--accent2); }
+    .player-card-name { font-weight:700; font-size:.95rem; }
+    .player-card-pts { font-size:1.1rem; font-weight:700; color:var(--accent); }
+    .player-card-status { font-size:.75rem; color:var(--text-muted); margin-bottom:.4rem; }
+    .player-card-role { font-size:.8rem; color:#aaa; margin-bottom:.4rem; word-break:break-word; }
+    .player-actions { display:flex; flex-wrap:wrap; gap:.3rem; }
+    .player-actions button { font-size:.75rem; padding:.25rem .5rem; }
+
+    /* Templates */
+    .template-grid { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .template-btn { background:var(--surface2); border:2px solid transparent; font-size:.85rem; padding:.4rem .8rem; }
+    .template-btn.active { border-color:var(--accent); }
+
+    /* Module toggles */
+    .module-toggles { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.8rem; }
+    .module-toggle { display:flex; align-items:center; gap:.3rem; background:var(--surface2); border-radius:20px; padding:.3rem .7rem; font-size:.8rem; cursor:pointer; user-select:none; }
+    .module-toggle input[type="checkbox"] { accent-color:var(--accent); width:14px; height:14px; }
+
+    /* Global actions */
+    .global-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.8rem; }
+
+    /* Role assignment */
+    .role-assign { display:flex; gap:.4rem; align-items:center; margin-bottom:.4rem; }
+    .role-assign select { flex:1; }
+    .role-assign input { flex:2; }
+    .role-assign button { flex-shrink:0; }
+
+    /* Voting panel */
+    .vote-tally { font-size:.85rem; padding:.4rem; background:var(--surface2); border-radius:8px; max-height:150px; overflow-y:auto; }
+    .vote-row { display:flex; justify-content:space-between; margin-bottom:.2rem; }
+
+    /* Add player form */
+    .add-player-form { display:flex; gap:.4rem; align-items:flex-end; flex-wrap:wrap; }
+
+    @media (max-width:500px) {
+      .players-grid { grid-template-columns:1fr 1fr; }
+    }
+    .conn-bar { display:flex; align-items:center; font-size:.8rem; color:var(--text-muted); margin-bottom:1rem; }
+  </style>
+</head>
+<body>
+  <div class="conn-bar">
+    <span class="conn-dot offline" id="conn-dot"></span>
+    <span id="conn-status">Connecting…</span>
+  </div>
+
+  <div class="page-header">
+    <h1>🎮 Game Master</h1>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-sm" id="qr-btn">📱 QR Code</button>
+      <button class="btn btn-sm btn-red" id="reset-scores-btn">↺ Reset Scores</button>
+    </div>
+  </div>
+
+  <!-- QR Invite -->
+  <div class="card" id="qr-panel" style="display:none;text-align:center">
+    <div class="section-title">Player Invite</div>
+    <img class="qr-img" id="qr-img" src="" alt="QR Code"/>
+    <div class="join-url" id="join-url"></div>
+    <button class="btn btn-sm" style="margin-top:.6rem" id="qr-close-btn">Close</button>
+  </div>
+
+  <!-- Templates -->
+  <div class="card">
+    <div class="section-title">Template</div>
+    <div class="template-grid" id="template-grid"></div>
+  </div>
+
+  <!-- Module Toggles -->
+  <div class="card">
+    <div class="section-title">Active Modules</div>
+    <div class="module-toggles" id="module-toggles">
+      <label class="module-toggle"><input type="checkbox" data-module="buzzer" checked/> ⚡ Buzzer</label>
+      <label class="module-toggle"><input type="checkbox" data-module="points" checked/> 🏆 Points</label>
+      <label class="module-toggle"><input type="checkbox" data-module="roles" checked/> 🎭 Roles</label>
+      <label class="module-toggle"><input type="checkbox" data-module="voting" checked/> 🗳️ Voting</label>
+      <label class="module-toggle"><input type="checkbox" data-module="status" checked/> 💀 Status</label>
+    </div>
+  </div>
+
+  <!-- Global Actions -->
+  <div class="card">
+    <div class="section-title">Global Controls</div>
+    <div class="global-actions">
+      <button class="btn btn-green" id="enable-buzzers-btn">⚡ Enable Buzzers</button>
+      <button class="btn btn-orange" id="reset-buzzer-btn">↺ Reset Buzzer</button>
+      <button class="btn btn-blue" id="open-vote-btn">🗳️ Open Voting</button>
+      <button class="btn btn-red" id="close-vote-btn">🔒 Close Voting</button>
+      <button class="btn btn-accent" id="reveal-votes-btn">📊 Reveal Votes</button>
+      <button class="btn" id="show-roles-btn">👁 Show All Roles</button>
+      <button class="btn btn-red" id="hide-roles-btn">🙈 Hide All Roles</button>
+    </div>
+  </div>
+
+  <!-- Role Assignment -->
+  <div class="card" id="role-assign-card">
+    <div class="section-title">Assign Roles</div>
+    <div class="role-assign">
+      <select id="role-player-select"><option value="">— Select Player —</option></select>
+      <input type="text" id="role-text-input" placeholder="Role name…" maxlength="48"/>
+      <button class="btn btn-accent btn-sm" id="assign-role-btn">Assign</button>
+    </div>
+  </div>
+
+  <!-- Voting Tally (GM only) -->
+  <div class="card" id="vote-tally-card" style="display:none">
+    <div class="section-title">Live Vote Tally (GM Only)</div>
+    <div class="vote-tally" id="vote-tally"></div>
+  </div>
+
+  <!-- Players -->
+  <div class="card">
+    <div class="section-title">Players (<span id="player-count">0</span>)</div>
+    <div class="players-grid" id="players-grid"></div>
+    <p id="no-players" style="color:var(--text-muted);font-size:.85rem">No players yet. Share the QR code!</p>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/ws-client.js"></script>
+  <script src="/js/gm.js"></script>
+</body>
+</html>

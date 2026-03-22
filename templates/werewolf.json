@@ -1,0 +1,11 @@
+{
+  "name": "Werewolf",
+  "description": "Role reveals and death animations. Secret roles, voting, and alive/dead status.",
+  "modules": {
+    "buzzer": false,
+    "points": false,
+    "roles": true,
+    "voting": true,
+    "status": true
+  }
+}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>OmniCast — Operator</title>
+  <link rel="stylesheet" href="/css/common.css"/>
+  <style>
+    body { padding:1rem; }
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; flex-wrap:wrap; gap:.5rem; }
+    .page-header h1 { font-size:1.4rem; }
+    .section-title { font-size:1rem; font-weight:700; margin-bottom:.6rem; letter-spacing:.06em; color:var(--text-muted); text-transform:uppercase; }
+    .players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.8rem; }
+    .player-card { background:var(--surface); border-radius:var(--radius); padding:.8rem; }
+    .player-card.dead { filter:grayscale(.8); opacity:.7; }
+    .player-card-top { display:flex; align-items:center; gap:.6rem; margin-bottom:.6rem; }
+    .player-card-avatar { width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--accent2); }
+    .player-card-name { font-weight:700; font-size:.95rem; }
+    .player-card-pts { font-size:1.1rem; font-weight:700; color:var(--accent); }
+    .override-form { display:flex; flex-direction:column; gap:.4rem; margin-top:.4rem; }
+    .override-form input[type="text"] { font-size:.8rem; padding:.35rem .6rem; }
+    .override-form button { font-size:.8rem; padding:.3rem .7rem; }
+    .file-upload-row { display:flex; gap:.4rem; align-items:center; }
+    .file-upload-row input[type="file"] { font-size:.75rem; flex:1; }
+    .status-row { display:flex; gap:.4rem; margin-top:.3rem; }
+    .global-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.8rem; }
+    .conn-bar { display:flex; align-items:center; font-size:.8rem; color:var(--text-muted); margin-bottom:1rem; }
+
+    /* Scoreboard preview */
+    .score-list { display:flex; flex-direction:column; gap:.3rem; }
+    .score-item { display:flex; align-items:center; gap:.6rem; background:var(--surface2); border-radius:8px; padding:.4rem .8rem; }
+    .score-item img { width:32px; height:32px; border-radius:50%; object-fit:cover; }
+    .score-rank { width:1.5rem; text-align:center; font-weight:700; color:var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="conn-bar">
+    <span class="conn-dot offline" id="conn-dot"></span>
+    <span id="conn-status">Connecting…</span>
+  </div>
+
+  <div class="page-header">
+    <h1>🎛️ Operator</h1>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-sm btn-red" id="reset-scores-btn">↺ Reset Scores</button>
+    </div>
+  </div>
+
+  <!-- Global Controls -->
+  <div class="card">
+    <div class="section-title">Global Controls</div>
+    <div class="global-actions">
+      <button class="btn btn-accent" id="show-roles-btn">👁 Reveal All Roles (OBS)</button>
+      <button class="btn btn-red"    id="hide-roles-btn">🙈 Hide All Roles (OBS)</button>
+    </div>
+    <div id="game-status" style="font-size:.85rem;color:var(--text-muted);margin-top:.4rem"></div>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="card">
+    <div class="section-title">Scoreboard</div>
+    <div class="score-list" id="score-list"></div>
+  </div>
+
+  <!-- Player Asset Overrides -->
+  <div class="card">
+    <div class="section-title">Players — Asset Override</div>
+    <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.8rem">Replace a player's image with official art mid-game.</p>
+    <div class="players-grid" id="players-grid"></div>
+    <p id="no-players" style="color:var(--text-muted);font-size:.85rem">No players yet.</p>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/ws-client.js"></script>
+  <script src="/js/operator.js"></script>
+</body>
+</html>
